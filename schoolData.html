@@ -4,13 +4,48 @@
   <meta charset="UTF-8">
   <title>문자의 디지털 표현 빙고게임</title>
   <style>
-    body {
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
       font-family: sans-serif;
+      background-color: #fff9c4;
+    }
+    body {
       padding: 20px;
+      position: relative;
+    }
+    .main-title {
+      text-align: center;
+      font-size: 2em;
+      margin-top: 20px;
+    }
+    mark {
+      background-color: yellow;
+      padding: 0 5px;
+    }
+    .bubble {
+      position: absolute;
+      bottom: -100px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      animation: rise 20s infinite ease-in;
+    }
+    @keyframes rise {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-1000px) scale(0.5); opacity: 0; }
     }
     input, button {
       margin: 5px;
       padding: 8px;
+    }
+    .ascii-output {
+      font-size: 14px;
+      color: gray;
+      margin-top: 10px;
+      word-break: break-word;
     }
     table {
       border-collapse: collapse;
@@ -22,19 +57,11 @@
       border: 1px solid #999;
       vertical-align: middle;
       text-align: center;
-      position: relative;
       background-color: white;
     }
     .bingo-input {
       width: 40px;
       font-size: 18px;
-      text-align: center;
-      border: 1px solid #ccc;
-      margin-bottom: 4px;
-    }
-    .ascii-output {
-      font-size: 12px;
-      color: gray;
       text-align: center;
     }
     .submitted-cell {
@@ -43,41 +70,59 @@
     .selected {
       background-color: lightgray !important;
     }
-    #asciiResult {
-      margin-top: 10px;
-      font-size: 16px;
-    }
     .bingo-container {
       display: flex;
       gap: 20px;
       align-items: flex-start;
       margin-top: 15px;
+      flex-wrap: wrap;
+    }
+    .ascii-section {
+      display: flex;
+      gap: 40px;
+      flex-wrap: wrap;
+    }
+    .ascii-box {
+      flex: 1;
+      min-width: 280px;
+    }
+    .ascii-img {
+      width: 100%;
+      max-width: 600px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
 
-  <h1>문자의 디지털 표현</h1>
+  <h1 class="main-title">⭐ 문자의 디지털 표현 ⭐</h1>
 
-  <!-- 기능 1 -->
   <section>
-    <h2>1. 아스키 코드 변환기 (7비트)</h2>
-    <input type="text" id="charInput" maxlength="1" placeholder="문자 입력 (예: A)">
-    <button onclick="convertChar()">변환</button>
-    <div id="asciiResult"></div>
+    <h2><mark>1. 아스키 코드 변환기 (7비트)</mark></h2>
+    <div class="ascii-section">
+      <div class="ascii-box">
+        <h3>1) 문자 변환</h3>
+        <input type="text" id="singleCharInput" maxlength="1" placeholder="한 문자 입력 (예: A)">
+        <button onclick="convertSingleChar()">변환</button>
+        <div id="singleAsciiResult" class="ascii-output"></div>
+
+        <h3>2) 단어 변환</h3>
+        <input type="text" id="charInput" placeholder="문자열 입력 (예: LOVE)">
+        <button onclick="convertChar()">변환</button>
+        <div id="asciiResult" class="ascii-output"></div>
+      </div>
+      <div class="ascii-box">
+        <h3>아스키 코드표</h3>
+        <img src="ascii_code_table.png" alt="아스키 코드표" class="ascii-img">
+      </div>
+    </div>
   </section>
 
-  <hr>
-
-  <!-- 기능 2 -->
   <section>
-    <h2>2. 빙고판 생성 및 변환</h2>
-    행:
-    <input type="number" id="rowInput" min="1" value="5">
-    열:
-    <input type="number" id="colInput" min="1" value="5">
+    <h2><mark>2. 빙고판 생성 및 변환</mark></h2>
+    행: <input type="number" id="rowInput" min="1" value="5">
+    열: <input type="number" id="colInput" min="1" value="5">
     <button onclick="generateBingo()">빙고판 생성</button>
-
     <div class="bingo-container">
       <table id="bingoTable"></table>
       <div>
@@ -87,197 +132,49 @@
     </div>
   </section>
 
-  <!-- 기능 3 -->
   <section>
-    <h2>3. 완성된 빙고판</h2>
+    <h2><mark>3. 완성된 빙고판</mark></h2>
     <div><strong>현재 빙고 수:</strong> <span id="bingoCount">0</span> 빙고</div>
     <table id="submittedBingoTable"></table>
-
     <div id="congratsMessage" style="display:none; margin-top: 10px;">
       🎉 축하합니다! 3빙고를 완성하셨습니다!
       <button onclick="restartGame()">게임 재시작</button>
     </div>
   </section>
 
-  <script>
-    let editCount = 0;
-    let submitCount = 0;
-    let bingoCelebrated = false;
-    let usedChars = {};
+  <div class="bubble" style="left: 10%; width: 40px; height: 40px;"></div>
+  <div class="bubble" style="left: 25%; width: 60px; height: 60px;"></div>
+  <div class="bubble" style="left: 40%; width: 50px; height: 50px;"></div>
+  <div class="bubble" style="left: 60%; width: 70px; height: 70px;"></div>
+  <div class="bubble" style="left: 80%; width: 30px; height: 30px;"></div>
 
+  <script>
     function toBinary7bit(n) {
       return n.toString(2).padStart(7, '0');
     }
-
-    function convertChar() {
-      const char = document.getElementById('charInput').value;
-      if (!char) return alert("문자를 입력하세요.");
-      const code = char.charCodeAt(0);
+    function convertSingleChar() {
+      const input = document.getElementById('singleCharInput').value;
+      if (!input || input.length !== 1) {
+        alert("한 문자를 입력하세요.");
+        return;
+      }
+      const code = input.charCodeAt(0);
       const binary = toBinary7bit(code);
-      document.getElementById('asciiResult').innerHTML =
-        `<strong>${char}</strong> → ASCII(10진수): ${code}, 7비트 2진수: ${binary}`;
+      document.getElementById('singleAsciiResult').innerText = `${input} → ${binary}`;
     }
-
-    function generateBingo() {
-      const row = parseInt(document.getElementById('rowInput').value);
-      const col = parseInt(document.getElementById('colInput').value);
-      const table = document.getElementById('bingoTable');
-      table.innerHTML = "";
-      usedChars = {};  // 문자 사용 기록 초기화
-
-      for (let r = 0; r < row; r++) {
-        const tr = document.createElement('tr');
-        for (let c = 0; c < col; c++) {
-          const td = document.createElement('td');
-
-          const input = document.createElement('input');
-          input.type = 'text';
-          input.maxLength = 1;
-          input.className = "bingo-input";
-
-          const output = document.createElement('div');
-          output.className = "ascii-output";
-
-          input.addEventListener('input', () => {
-            const val = input.value;
-            if (val) {
-              if (usedChars[val]) {
-                alert("⚠️ 주의: 같은 문자를 두 번 사용했습니다.");
-                input.value = "";
-                output.innerText = "";
-                return;
-              }
-              usedChars[val] = true;
-
-              const code = val.charCodeAt(0);
-              const binary = toBinary7bit(code);
-              output.innerText = binary;
-            } else {
-              output.innerText = "";
-            }
-          });
-
-          td.appendChild(input);
-          td.appendChild(output);
-          tr.appendChild(td);
-        }
-        table.appendChild(tr);
+    function convertChar() {
+      const input = document.getElementById('charInput').value;
+      if (!input) {
+        alert("문자열을 입력하세요.");
+        return;
       }
-    }
-
-    function submitBingo() {
-      const sourceTable = document.getElementById('bingoTable');
-      const destTable = document.getElementById('submittedBingoTable');
-      destTable.innerHTML = "";
-
-      const rows = sourceTable.rows;
-      for (let r = 0; r < rows.length; r++) {
-        const newRow = document.createElement('tr');
-        const cells = rows[r].cells;
-        for (let c = 0; c < cells.length; c++) {
-          const oldCell = cells[c];
-          const input = oldCell.querySelector('input');
-          const text = input ? input.value : '';
-          const binary = text ? toBinary7bit(text.charCodeAt(0)) : '';
-
-          const newCell = document.createElement('td');
-          newCell.className = "submitted-cell";
-
-          newCell.innerHTML = `<div><strong>${text}</strong></div><div class="ascii-output">${binary}</div>`;
-
-          newCell.addEventListener('click', function () {
-            newCell.classList.toggle('selected');
-            checkBingo();
-          });
-
-          newRow.appendChild(newCell);
-        }
-        destTable.appendChild(newRow);
+      let result = '';
+      for (let i = 0; i < input.length; i++) {
+        const code = input.charCodeAt(i);
+        result += toBinary7bit(code) + ' ';
       }
-
-      if (submitCount > 0) {
-        editCount++;
-        document.getElementById("editCount").innerText = editCount;
-      }
-
-      submitCount++;
-      bingoCelebrated = false;
-      document.getElementById("bingoCount").innerText = "0";
-      document.getElementById("congratsMessage").style.display = "none";
-      checkBingo();
-    }
-
-    function checkBingo() {
-      const table = document.getElementById('submittedBingoTable');
-      const rows = table.rows;
-      const size = rows.length;
-      let count = 0;
-
-      for (let r = 0; r < size; r++) {
-        let rowComplete = true;
-        for (let c = 0; c < size; c++) {
-          if (!rows[r].cells[c].classList.contains('selected')) {
-            rowComplete = false;
-            break;
-          }
-        }
-        if (rowComplete) count++;
-      }
-
-      for (let c = 0; c < size; c++) {
-        let colComplete = true;
-        for (let r = 0; r < size; r++) {
-          if (!rows[r].cells[c].classList.contains('selected')) {
-            colComplete = false;
-            break;
-          }
-        }
-        if (colComplete) count++;
-      }
-
-      let diag1 = true;
-      for (let i = 0; i < size; i++) {
-        if (!rows[i].cells[i].classList.contains('selected')) {
-          diag1 = false;
-          break;
-        }
-      }
-      if (diag1) count++;
-
-      let diag2 = true;
-      for (let i = 0; i < size; i++) {
-        if (!rows[i].cells[size - i - 1].classList.contains('selected')) {
-          diag2 = false;
-          break;
-        }
-      }
-      if (diag2) count++;
-
-      document.getElementById("bingoCount").innerText = count;
-
-      if (count >= 3 && !bingoCelebrated) {
-        bingoCelebrated = true;
-        document.getElementById("congratsMessage").style.display = "block";
-
-        const allCells = table.getElementsByTagName('td');
-        for (let cell of allCells) {
-          cell.classList.remove('selected');
-        }
-      }
-    }
-
-    function restartGame() {
-      document.getElementById("bingoTable").innerHTML = "";
-      document.getElementById("submittedBingoTable").innerHTML = "";
-      document.getElementById("bingoCount").innerText = "0";
-      document.getElementById("editCount").innerText = "0";
-      document.getElementById("congratsMessage").style.display = "none";
-      editCount = 0;
-      submitCount = 0;
-      bingoCelebrated = false;
-      usedChars = {};
+      document.getElementById('asciiResult').innerText = result.trim();
     }
   </script>
-
 </body>
 </html>
